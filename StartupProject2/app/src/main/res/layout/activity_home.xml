@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -59,7 +59,6 @@
                         android:id="@+id/yourSpinner"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:entries="@array/language_array"
                         android:layout_gravity="center_horizontal"
                         android:layout_marginTop="10dp"
                         android:rotation="-180"/>
@@ -80,13 +79,6 @@
                             android:gravity="center"
                             android:rotation="-180"/>
 
-                        <ImageView
-                            android:id="@+id/yourMic"
-                            android:layout_width="60dp"
-                            android:layout_height="60dp"
-                            app:srcCompat="@drawable/mic"
-                            android:rotation="-180"
-                            android:layout_gravity="center"/>
                     </FrameLayout>
 
                     <FrameLayout
@@ -105,19 +97,12 @@
                             android:text="Press and speak"
                             android:gravity="center"/>
 
-                        <ImageView
-                            android:id="@+id/myMic"
-                            android:layout_width="60dp"
-                            android:layout_height="60dp"
-                            app:srcCompat="@drawable/mic"
-                            android:layout_gravity="center"/>
                     </FrameLayout>
 
                     <Spinner
                         android:id="@+id/mySpinner"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:entries="@array/language_array"
                         android:layout_gravity="center_horizontal"/>
                 </LinearLayout>
             </FrameLayout>
@@ -129,4 +114,4 @@
 
         </LinearLayout>
     </TabHost>
-</androidx.constraintlayout.widget.ConstraintLayout>
+</LinearLayout>

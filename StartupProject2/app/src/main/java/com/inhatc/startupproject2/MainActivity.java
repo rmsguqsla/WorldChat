@@ -9,22 +9,28 @@ import android.widget.Button;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
-    Button button1;
+    Button btnLogin, btnSign;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        button1 = (Button)findViewById(R.id.button1);
-        button1.setOnClickListener(this);
+        btnLogin = (Button)findViewById(R.id.btnLogin);
+        btnSign = (Button)findViewById(R.id.btnSignup);
+        btnLogin.setOnClickListener(this);
+        btnSign.setOnClickListener(this);
     }
 
     @Override
     public void onClick(View view) {
-        if(view == button1) {
-            Intent intent = new Intent(this, HomeActivity.class);
+        if(view == btnLogin) {
+            Intent intent = new Intent(this, LoginActivity.class);
             startActivity(intent);
+        }
+        else if(view == btnSign) {
+            Intent signIntent = new Intent(this, SignupActivity.class);
+            startActivity(signIntent);
         }
     }
 }

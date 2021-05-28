@@ -1,5 +1,6 @@
 package com.inhatc.startupproject2;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
@@ -12,6 +13,8 @@ import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.ListView;
 import android.widget.Spinner;
 import android.widget.TabHost;
 import android.widget.TextView;
@@ -20,6 +23,16 @@ import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.widget.Toast;
 
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.QuerySnapshot;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 
@@ -30,6 +43,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.List;
 
 public class HomeActivity extends AppCompatActivity implements View.OnClickListener{
     final int PERMISSION = 1;
@@ -42,11 +56,20 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     Spinner mySpinner;
     Spinner yourSpinner;
     String[] language = {"English", "한국어", "中国人", "日本語"};
+    TextView txtName;
+    Button btnUserInfo;
+    Button btnLogout;
+    ArrayList<String> userList;
+    ListView lstFriend;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
+
+        userList = new ArrayList<String>();
+
+        init();
 
         if (Build.VERSION.SDK_INT >= 23) {
             ActivityCompat.requestPermissions(this, new String[]
@@ -54,10 +77,78 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                             Manifest.permission.RECORD_AUDIO}, PERMISSION);
         }
 
+        txtName = findViewById(R.id.txtName);
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        DocumentReference documentReference = FirebaseFirestore.getInstance().collection("users").document(user.getUid());
+        documentReference.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                if (task.isSuccessful()) {
+                    DocumentSnapshot document = task.getResult();
+                    if (document != null) {
+                        if (document.exists()) {
+                            txtName.setText(document.getData().get("name").toString());
+                        } else {
+                            Log.d("TAG : ", "No such document");
+                        }
+                    }
+                } else {
+                    Log.d("TAG : ", "get failed with ", task.getException());
+                }
+            }
+        });
+
+        btnLogout = (Button)findViewById(R.id.btnLogout);
+        btnUserInfo = findViewById(R.id.btnUserInfo);
         yourText = (TextView)findViewById(R.id.yourText);
         myText = (TextView)findViewById(R.id.myText);
         yourSpinner = (Spinner)findViewById(R.id.yourSpinner);
         mySpinner = (Spinner)findViewById(R.id.mySpinner);
+
+        lstFriend = findViewById(R.id.lstFriend);
+
+        CollectionReference collectionReference = FirebaseFirestore.getInstance().collection("users");
+        collectionReference.get()
+                .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                    @Override
+                    public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                        if(task.isSuccessful()) {
+                            userList.clear();
+                            for(QueryDocumentSnapshot document : task.getResult()) {
+                                if(!txtName.getText().toString().trim().equals(document.getData().get("name").toString().trim())) {
+                                    userList.add(document.getData().get("name").toString());
+                                }
+                            }
+                        } else {
+                            Log.d("TAG: ", "Error getting documents: ", task.getException());
+                        }
+                    }
+                });
+
+        /*ValueEventListener postListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                for(DataSnapshot postSnapshot: snapshot.getChildren()) {
+                    String strKey = postSnapshot.getKey();
+                    f
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.w("TAG : ","Faild to read value.", error.toException());
+            }
+        };*/
+
+        ArrayAdapter Fadapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, userList);
+        lstFriend.setAdapter(Fadapter);
+        lstFriend.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                Toast.makeText(HomeActivity.this,"OK",Toast.LENGTH_SHORT).show();
+            }
+        });
+
         myTabHost = (TabHost)findViewById(R.id.tabhost);
         myTabHost.setup();
 
@@ -76,15 +167,21 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                 .setContent(R.id.tab3);
         myTabHost.addTab(myTabSpec);
 
-        myTabHost.setCurrentTab(0);
+        myTabSpec = myTabHost.newTabSpec("UserInfo")
+                .setIndicator("UserInfo")
+                .setContent(R.id.tab4);
+        myTabHost.addTab(myTabSpec);
 
+        myTabHost.setCurrentTab(0);
         yourText.setOnClickListener(this);
         myText.setOnClickListener(this);
+        btnUserInfo.setOnClickListener(this);
+        btnLogout.setOnClickListener(this);
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, R.layout.support_simple_spinner_dropdown_item, language);
+        ArrayAdapter<String> Ladapter = new ArrayAdapter<String>(this, R.layout.support_simple_spinner_dropdown_item, language);
 
-        yourSpinner.setAdapter(adapter);
-        mySpinner.setAdapter(adapter);
+        yourSpinner.setAdapter(Ladapter);
+        mySpinner.setAdapter(Ladapter);
 
         yourSpinner.setSelection(0);
         mySpinner.setSelection(1);
@@ -112,6 +209,53 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             }
         });*/
     }
+
+    private void init() {
+        FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
+        DocumentReference documentReference = FirebaseFirestore.getInstance().collection("users").document(firebaseUser.getUid());
+        documentReference.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                if (task.isSuccessful()) {
+                    DocumentSnapshot document = task.getResult();
+                    if (document != null) {
+                        if (document.exists()) {
+                            Log.d("TAG : ", "DocumentSnapshot data: " + document.getData());
+                        } else {
+                            Log.d("TAG : ", "No such document");
+                            myStartActivity(UserInfoActivity.class);
+                        }
+                    }
+                } else {
+                    Log.d("TAG : ", "get failed with ", task.getException());
+                }
+            }
+        });
+    }
+
+    private void myStartActivity(Class c) {
+        Intent intent = new Intent(this, c);
+        startActivityForResult(intent, 1);
+    }
+    
+    /*@Override
+    protected void onResume() {
+        super.onResume();
+    }
+
+    @Override
+    protected void onPause(){
+        super.onPause();
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        switch (requestCode) {
+            case 1:
+                break;
+        }
+    }*/
 
     /*@Override
     public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
@@ -176,13 +320,20 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             String tmp = myText.getText().toString();
             task.execute(tmp);
         }
-
+        if(view == btnUserInfo) {
+            intent = new Intent(this, UserInfoActivity.class);
+            startActivity(intent);
+        }
+        if(view == btnLogout) {
+            FirebaseAuth.getInstance().signOut();
+            intent = new Intent(this, MainActivity.class);
+            startActivity(intent);
+        }
     }
 
     private RecognitionListener yourlistener = new RecognitionListener() {
         @Override public void onReadyForSpeech(Bundle params) {
-            Toast.makeText(HomeActivity.this, "음성인식을 시작합니" +
-                    "다.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(HomeActivity.this, "Speak", Toast.LENGTH_SHORT).show();
         }
         @Override public void onBeginningOfSpeech() {}
         @Override public void onRmsChanged(float rmsdB) {}
@@ -239,8 +390,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
 
     private RecognitionListener mylistener = new RecognitionListener() {
         @Override public void onReadyForSpeech(Bundle params) {
-            Toast.makeText(HomeActivity.this, "음성인식을 시작합니" +
-                    "다.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(HomeActivity.this, "Speak", Toast.LENGTH_SHORT).show();
         }
         @Override public void onBeginningOfSpeech() {}
         @Override public void onRmsChanged(float rmsdB) {}
@@ -428,7 +578,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                 br.close();
                 result = response.toString();
             } catch (Exception e) {
-                result="번역 실패";
+                result="Translation Failed";
                 System.out.println(e);
             }
             Log.d("papago",result);

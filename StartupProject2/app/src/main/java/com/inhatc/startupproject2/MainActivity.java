@@ -1,11 +1,21 @@
 package com.inhatc.startupproject2;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -20,6 +30,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         btnSign = (Button)findViewById(R.id.btnSignup);
         btnLogin.setOnClickListener(this);
         btnSign.setOnClickListener(this);
+        init();
     }
 
     @Override
@@ -32,5 +43,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Intent signIntent = new Intent(this, SignupActivity.class);
             startActivity(signIntent);
         }
+    }
+
+    private void init() {
+        FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (firebaseUser != null) {
+            myStartActivity(HomeActivity.class);
+        }
+    }
+
+    private void myStartActivity(Class c) {
+        Intent intent = new Intent(this, c);
+        startActivityForResult(intent, 1);
     }
 }

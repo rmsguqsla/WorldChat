@@ -3,6 +3,9 @@ package com.inhatc.startupproject2;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
 
 import android.Manifest;
 import android.content.Intent;
@@ -27,6 +30,9 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -43,7 +49,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
-import java.util.List;
 
 public class HomeActivity extends AppCompatActivity implements View.OnClickListener{
     final int PERMISSION = 1;
@@ -59,8 +64,10 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     TextView txtName;
     Button btnUserInfo;
     Button btnLogout;
-    ArrayList<String> userList;
-    ListView lstFriend;
+    ArrayList<String> userList, chatList;
+    ListView lstFriend, lstChat;
+    DatabaseReference databaseReference;
+    String roomName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,6 +75,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_home);
 
         userList = new ArrayList<String>();
+        chatList = new ArrayList<String>();
 
         init();
 
@@ -104,8 +112,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         myText = (TextView)findViewById(R.id.myText);
         yourSpinner = (Spinner)findViewById(R.id.yourSpinner);
         mySpinner = (Spinner)findViewById(R.id.mySpinner);
-
         lstFriend = findViewById(R.id.lstFriend);
+        lstChat = findViewById(R.id.lstChat);
 
         CollectionReference collectionReference = FirebaseFirestore.getInstance().collection("users");
         collectionReference.get()
@@ -125,27 +133,44 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                     }
                 });
 
-        /*ValueEventListener postListener = new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                for(DataSnapshot postSnapshot: snapshot.getChildren()) {
-                    String strKey = postSnapshot.getKey();
-                    f
-                }
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                Log.w("TAG : ","Faild to read value.", error.toException());
-            }
-        };*/
-
+        databaseReference = FirebaseDatabase.getInstance().getReference();
         ArrayAdapter Fadapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, userList);
         lstFriend.setAdapter(Fadapter);
         lstFriend.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                Toast.makeText(HomeActivity.this,"OK",Toast.LENGTH_SHORT).show();
+                roomName = txtName.getText().toString() + ", " + adapterView.getItemAtPosition(i);
+                Intent intent = new Intent(HomeActivity.this, ChatMsgActivity.class);
+                intent.putExtra("roomName",roomName);
+                startActivity(intent);
+            }
+        });
+
+        databaseReference.child("ChatRooms").get().addOnCompleteListener(new OnCompleteListener<DataSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DataSnapshot> task) {
+                if(task.isSuccessful()) {
+                    if(task.getResult().getKey() != null) {
+                        for(DataSnapshot postTask: task.getResult().getChildren()) {
+                            String[] lstUserName = postTask.getKey().split(", ");
+                            if (lstUserName[0].equals(txtName.getText().toString()) || lstUserName[1].equals(txtName.getText().toString())) {
+                                chatList.add(postTask.getKey());
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        ArrayAdapter Cadapter = new ArrayAdapter(HomeActivity.this, android.R.layout.simple_list_item_1, chatList);
+        lstChat.setAdapter(Cadapter);
+
+        lstChat.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                roomName = adapterView.getItemAtPosition(i).toString();
+                Intent intent = new Intent(HomeActivity.this, ChatMsgActivity.class);
+                intent.putExtra("roomName",roomName);
+                startActivity(intent);
             }
         });
 
@@ -593,6 +618,16 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             String tmp = element.getAsJsonObject().get("message").getAsJsonObject().get("result").getAsJsonObject().get("translatedText").getAsString();
             yourText.setText(tmp);
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+    }
+
+    @Override
+    protected void onPause(){
+        super.onPause();
     }
 }
 

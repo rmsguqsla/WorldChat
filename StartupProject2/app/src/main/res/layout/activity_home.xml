@@ -86,18 +86,42 @@
 
                 </RelativeLayout>
 
-                <LinearLayout
+                <RelativeLayout
                     android:id="@+id/tab2"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:orientation="vertical">
 
-                    <TextView
-                        android:id="@+id/textView2"
+                    <LinearLayout
+                        android:id="@+id/topLayout2"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="chat"/>
-                </LinearLayout>
+                        android:layout_height="wrap_content">
+
+                        <TextView
+                            android:id="@+id/txtTitleChat"
+                            android:layout_height="wrap_content"
+                            android:layout_width="wrap_content"
+                            android:text="Chat"
+                            android:textSize="35dp"
+                            android:textColor="@color/black"
+                            android:layout_marginLeft="10dp"/>
+                    </LinearLayout>
+
+                    <RelativeLayout
+                        android:id="@+id/bottomLayout2"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_below="@+id/topLayout2">
+
+                        <ListView
+                            android:id="@+id/lstChat"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:layout_marginTop="10dp" />
+
+                    </RelativeLayout>
+
+                </RelativeLayout>
 
                 <LinearLayout
                     android:id="@+id/tab3"

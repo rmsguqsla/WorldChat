@@ -1,5 +1,6 @@
 package com.inhatc.startupproject2;
 
+import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -60,24 +61,27 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     TextView myText;
     Spinner mySpinner;
     Spinner yourSpinner;
-    String[] language = {"English", "한국어", "中国人", "日本語"};
+    String[] language = {"한국어", "English", "中国人", "日本語"};
     TextView txtName;
+    String name;
     Button btnUserInfo;
     Button btnLogout;
     ArrayList<String> userList, chatList;
     ListView lstFriend, lstChat;
     DatabaseReference databaseReference;
-    String roomName;
+    String roomName, roomName2;
+    String tmp;
+    int pressedTime = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
 
+        init();
+
         userList = new ArrayList<String>();
         chatList = new ArrayList<String>();
-
-        init();
 
         if (Build.VERSION.SDK_INT >= 23) {
             ActivityCompat.requestPermissions(this, new String[]
@@ -86,26 +90,6 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         }
 
         txtName = findViewById(R.id.txtName);
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        DocumentReference documentReference = FirebaseFirestore.getInstance().collection("users").document(user.getUid());
-        documentReference.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-            @Override
-            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                if (task.isSuccessful()) {
-                    DocumentSnapshot document = task.getResult();
-                    if (document != null) {
-                        if (document.exists()) {
-                            txtName.setText(document.getData().get("name").toString());
-                        } else {
-                            Log.d("TAG : ", "No such document");
-                        }
-                    }
-                } else {
-                    Log.d("TAG : ", "get failed with ", task.getException());
-                }
-            }
-        });
-
         btnLogout = (Button)findViewById(R.id.btnLogout);
         btnUserInfo = findViewById(R.id.btnUserInfo);
         yourText = (TextView)findViewById(R.id.yourText);
@@ -115,6 +99,24 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         lstFriend = findViewById(R.id.lstFriend);
         lstChat = findViewById(R.id.lstChat);
 
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        DocumentReference documentReference = FirebaseFirestore.getInstance().collection("users").document(user.getUid());
+        documentReference.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                if (task.isSuccessful()) {
+                    DocumentSnapshot document = task.getResult();
+                    if (document.exists()) {
+                        txtName.setText(document.getData().get("name").toString());
+                    } else {
+                        Log.d("TAG : ", "No such document");
+                    }
+                } else {
+                    Log.d("TAG : ", "get failed with ", task.getException());
+                }
+            }
+        });
+
         CollectionReference collectionReference = FirebaseFirestore.getInstance().collection("users");
         collectionReference.get()
                 .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
@@ -123,10 +125,12 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                         if(task.isSuccessful()) {
                             userList.clear();
                             for(QueryDocumentSnapshot document : task.getResult()) {
-                                if(!txtName.getText().toString().trim().equals(document.getData().get("name").toString().trim())) {
+                                if(!txtName.getText().equals(document.getData().get("name").toString())) {
                                     userList.add(document.getData().get("name").toString());
                                 }
                             }
+                            ArrayAdapter Fadapter = new ArrayAdapter(HomeActivity.this, android.R.layout.simple_list_item_1, userList);
+                            lstFriend.setAdapter(Fadapter);
                         } else {
                             Log.d("TAG: ", "Error getting documents: ", task.getException());
                         }
@@ -134,15 +138,33 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                 });
 
         databaseReference = FirebaseDatabase.getInstance().getReference();
-        ArrayAdapter Fadapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, userList);
-        lstFriend.setAdapter(Fadapter);
         lstFriend.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
                 roomName = txtName.getText().toString() + ", " + adapterView.getItemAtPosition(i);
-                Intent intent = new Intent(HomeActivity.this, ChatMsgActivity.class);
-                intent.putExtra("roomName",roomName);
-                startActivity(intent);
+                roomName2 = adapterView.getItemAtPosition(i) + ", " + txtName.getText().toString();
+                databaseReference.child("ChatRooms").get().addOnCompleteListener(new OnCompleteListener<DataSnapshot>() {
+                    @Override
+                    public void onComplete(@NonNull Task<DataSnapshot> task) {
+                        if(task.isSuccessful()) {
+                            if(task.getResult().getKey() != null) {
+                                for(DataSnapshot postTask: task.getResult().getChildren()) {
+                                    if(postTask.getKey().equals(roomName)){
+                                        Intent intent = new Intent(HomeActivity.this, ChatMsgActivity.class);
+                                        intent.putExtra("roomName",roomName);
+                                        startActivity(intent);
+                                        break;
+                                    } else {
+                                        Intent intent = new Intent(HomeActivity.this, ChatMsgActivity.class);
+                                        intent.putExtra("roomName",roomName2);
+                                        startActivity(intent);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
             }
         });
 
@@ -150,20 +172,20 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             @Override
             public void onComplete(@NonNull Task<DataSnapshot> task) {
                 if(task.isSuccessful()) {
+                    chatList.clear();
                     if(task.getResult().getKey() != null) {
                         for(DataSnapshot postTask: task.getResult().getChildren()) {
                             String[] lstUserName = postTask.getKey().split(", ");
-                            if (lstUserName[0].equals(txtName.getText().toString()) || lstUserName[1].equals(txtName.getText().toString())) {
+                            if (lstUserName[0].trim().equals(txtName.getText().toString().trim()) || lstUserName[1].trim().equals(txtName.getText().toString().trim())) {
                                 chatList.add(postTask.getKey());
                             }
                         }
+                        ArrayAdapter Cadapter = new ArrayAdapter(HomeActivity.this, android.R.layout.simple_list_item_1, chatList);
+                        lstChat.setAdapter(Cadapter);
                     }
                 }
             }
         });
-        ArrayAdapter Cadapter = new ArrayAdapter(HomeActivity.this, android.R.layout.simple_list_item_1, chatList);
-        lstChat.setAdapter(Cadapter);
-
         lstChat.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
@@ -177,27 +199,74 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         myTabHost = (TabHost)findViewById(R.id.tabhost);
         myTabHost.setup();
 
-        myTabSpec = myTabHost.newTabSpec("Friend")
-                .setIndicator("Friend")
+        myTabSpec = myTabHost.newTabSpec("친구")
+                .setIndicator("친구")
                 .setContent(R.id.tab1);
         myTabHost.addTab(myTabSpec);
 
-        myTabSpec = myTabHost.newTabSpec("Chat")
-                .setIndicator("Chat")
+        myTabSpec = myTabHost.newTabSpec("채팅")
+                .setIndicator("채팅")
                 .setContent(R.id.tab2);
         myTabHost.addTab(myTabSpec);
 
-        myTabSpec = myTabHost.newTabSpec("Translator")
-                .setIndicator("Translator")
+        myTabSpec = myTabHost.newTabSpec("번역기")
+                .setIndicator("번역기")
                 .setContent(R.id.tab3);
         myTabHost.addTab(myTabSpec);
 
-        myTabSpec = myTabHost.newTabSpec("UserInfo")
-                .setIndicator("UserInfo")
+        myTabSpec = myTabHost.newTabSpec("설정")
+                .setIndicator("설정")
                 .setContent(R.id.tab4);
         myTabHost.addTab(myTabSpec);
 
         myTabHost.setCurrentTab(0);
+
+        myTabHost.setOnTabChangedListener(new TabHost.OnTabChangeListener() {
+            @Override
+            public void onTabChanged(String s) {
+                if(s.equalsIgnoreCase("친구")){
+                    collectionReference.get()
+                            .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                                @Override
+                                public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                                    if(task.isSuccessful()) {
+                                        userList.clear();
+                                        for(QueryDocumentSnapshot document : task.getResult()) {
+                                            if(!txtName.getText().equals(document.getData().get("name").toString())) {
+                                                userList.add(document.getData().get("name").toString());
+                                            }
+                                        }
+                                        ArrayAdapter Fadapter = new ArrayAdapter(HomeActivity.this, android.R.layout.simple_list_item_1, userList);
+                                        lstFriend.setAdapter(Fadapter);
+                                    } else {
+                                        Log.d("TAG: ", "Error getting documents: ", task.getException());
+                                    }
+                                }
+                            });
+                } else if(s.equalsIgnoreCase("채팅")){
+                    databaseReference.child("ChatRooms").get().addOnCompleteListener(new OnCompleteListener<DataSnapshot>() {
+                        @Override
+                        public void onComplete(@NonNull Task<DataSnapshot> task) {
+                            if(task.isSuccessful()) {
+                                chatList.clear();
+                                if(task.getResult().getKey() != null) {
+                                    for(DataSnapshot postTask: task.getResult().getChildren()) {
+                                        String[] lstUserName = postTask.getKey().split(", ");
+                                        if (lstUserName[0].trim().equals(txtName.getText().toString().trim()) || lstUserName[1].trim().equals(txtName.getText().toString().trim())) {
+                                            chatList.add(postTask.getKey());
+                                        }
+                                    }
+                                    ArrayAdapter Cadapter = new ArrayAdapter(HomeActivity.this, android.R.layout.simple_list_item_1, chatList);
+                                    lstChat.setAdapter(Cadapter);
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        });
+
+
         yourText.setOnClickListener(this);
         myText.setOnClickListener(this);
         btnUserInfo.setOnClickListener(this);
@@ -208,8 +277,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         yourSpinner.setAdapter(Ladapter);
         mySpinner.setAdapter(Ladapter);
 
-        yourSpinner.setSelection(0);
-        mySpinner.setSelection(1);
+        yourSpinner.setSelection(1);
+        mySpinner.setSelection(0);
 
         /*yourSpinner.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -237,30 +306,35 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
 
     private void init() {
         FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
-        DocumentReference documentReference = FirebaseFirestore.getInstance().collection("users").document(firebaseUser.getUid());
-        documentReference.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-            @Override
-            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                if (task.isSuccessful()) {
-                    DocumentSnapshot document = task.getResult();
-                    if (document != null) {
-                        if (document.exists()) {
-                            Log.d("TAG : ", "DocumentSnapshot data: " + document.getData());
-                        } else {
-                            Log.d("TAG : ", "No such document");
-                            myStartActivity(UserInfoActivity.class);
+        if (firebaseUser == null) {
+            myStartActivity(MainActivity.class);
+        }
+        else{
+            DocumentReference documentReference = FirebaseFirestore.getInstance().collection("users").document(firebaseUser.getUid());
+            documentReference.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                @Override
+                public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                    if (task.isSuccessful()) {
+                        DocumentSnapshot document = task.getResult();
+                        if (document != null) {
+                            if (document.exists()) {
+                                Log.d("TAG : ", "DocumentSnapshot data: " + document.getData());
+                            } else {
+                                Log.d("TAG : ", "No such document");
+                                myStartActivity(UserInfoActivity.class);
+                            }
                         }
+                    } else {
+                        Log.d("TAG : ", "get failed with ", task.getException());
                     }
-                } else {
-                    Log.d("TAG : ", "get failed with ", task.getException());
                 }
-            }
-        });
+            });
+        }
     }
 
     private void myStartActivity(Class c) {
         Intent intent = new Intent(this, c);
-        startActivityForResult(intent, 1);
+        startActivity(intent);
     }
     
     /*@Override
@@ -317,13 +391,11 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             } else if(yourSpinner.getSelectedItem().toString().equals("日本語")) {
                 intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE,"ja");
             }
+
             mRecognizer=SpeechRecognizer.createSpeechRecognizer(this);
             mRecognizer.setRecognitionListener(yourlistener);
             mRecognizer.startListening(intent);
 
-            yourBackgroundTask task = new yourBackgroundTask();
-            String tmp = yourText.getText().toString();
-            task.execute(tmp);
         }
         if(view == myText) {
             intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
@@ -337,13 +409,10 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             } else if(mySpinner.getSelectedItem().toString().equals("日本語")) {
                 intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE,"ja");
             }
+
             mRecognizer=SpeechRecognizer.createSpeechRecognizer(this);
             mRecognizer.setRecognitionListener(mylistener);
             mRecognizer.startListening(intent);
-
-            myBackgroundTask task = new myBackgroundTask();
-            String tmp = myText.getText().toString();
-            task.execute(tmp);
         }
         if(view == btnUserInfo) {
             intent = new Intent(this, UserInfoActivity.class);
@@ -358,7 +427,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
 
     private RecognitionListener yourlistener = new RecognitionListener() {
         @Override public void onReadyForSpeech(Bundle params) {
-            Toast.makeText(HomeActivity.this, "Speak", Toast.LENGTH_SHORT).show();
+            Toast.makeText(HomeActivity.this, "말하세요", Toast.LENGTH_SHORT).show();
         }
         @Override public void onBeginningOfSpeech() {}
         @Override public void onRmsChanged(float rmsdB) {}
@@ -408,9 +477,87 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             for(int i = 0; i < matches.size() ; i++){
                 yourText.setText(matches.get(i));
             }
+            yourBackgroundTask task = new yourBackgroundTask();
+            tmp = yourText.getText().toString();
+            task.execute(tmp);
         }
         @Override public void onPartialResults(Bundle partialResults) {}
         @Override public void onEvent(int eventType, Bundle params) {}
+
+        class yourBackgroundTask extends AsyncTask<String,Void,String>{
+            @Override
+            protected String doInBackground(String... str) {
+                String inputTest = str[0];
+                String clientId ="tVgKm0zaEMKwd8O2dLXR";
+                String clientSecret="fY4_JkE9lm";
+                String result ="";
+                try {
+                    String text = URLEncoder.encode(inputTest, "UTF-8");
+                    String apiURL = "https://openapi.naver.com/v1/papago/n2mt";
+                    URL url = new URL(apiURL);
+                    HttpURLConnection con = (HttpURLConnection)url.openConnection();
+                    con.setRequestMethod("POST");
+                    con.setRequestProperty("X-Naver-Client-Id", clientId);
+                    con.setRequestProperty("X-Naver-Client-Secret", clientSecret);
+                    // post request
+                    String postParams = "";
+                    if(yourSpinner.getSelectedItem().toString().equals("English")) {
+                        postParams += "source=en-US&";
+                    } else if(yourSpinner.getSelectedItem().toString().equals("한국어")) {
+                        postParams += "source=ko&";
+                    } else if(yourSpinner.getSelectedItem().toString().equals("中国人")) {
+                        postParams += "source=zh-CN&";
+                    } else if(yourSpinner.getSelectedItem().toString().equals("日本語")) {
+                        postParams += "source=ja&";
+                    }
+                    if(mySpinner.getSelectedItem().toString().equals("English")) {
+                        postParams += "target=en-US&";
+                    } else if(mySpinner.getSelectedItem().toString().equals("한국어")) {
+                        postParams += "target=ko&";
+                    } else if(mySpinner.getSelectedItem().toString().equals("中国人")) {
+                        postParams += "target=zh-CN&";
+                    } else if(mySpinner.getSelectedItem().toString().equals("日本語")) {
+                        postParams += "target=ja&";
+                    }
+                    postParams += "text=" + text;
+
+                    con.setDoOutput(true);
+                    DataOutputStream wr = new DataOutputStream(con.getOutputStream());
+                    wr.writeBytes(postParams);
+                    wr.flush();
+                    wr.close();
+                    //번역 결과 받아온다.
+                    int responseCode = con.getResponseCode();
+                    BufferedReader br;
+                    if(responseCode==200) { // 정상 호출
+                        br = new BufferedReader(new InputStreamReader(con.getInputStream()));
+                    } else {  // 에러 발생
+                        br = new BufferedReader(new InputStreamReader(con.getErrorStream()));
+                    }
+                    String inputLine;
+                    StringBuffer response = new StringBuffer();
+                    while ((inputLine = br.readLine()) != null) {
+                        response.append(inputLine);
+                    }
+                    br.close();
+                    result = response.toString();
+                } catch (Exception e) {
+                    result="번역 실패";
+                    System.out.println(e);
+                }
+                Log.d("papago",result);
+                return result;
+            }
+
+            @Override
+            protected void onPostExecute(String s) {
+                super.onPostExecute(s);
+                JsonParser parser = new JsonParser();
+                JsonElement element = parser.parse(s);
+                String tmp = element.getAsJsonObject().get("message").getAsJsonObject().get("result").getAsJsonObject().get("translatedText").getAsString();
+                myText.setText(tmp);
+            }
+        }
     };
 
     private RecognitionListener mylistener = new RecognitionListener() {
@@ -464,161 +611,92 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                     results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
             for(int i = 0; i < matches.size() ; i++){
                 myText.setText(matches.get(i));
+
             }
+            myBackgroundTask task = new myBackgroundTask();
+            tmp = myText.getText().toString();
+            task.execute(tmp);
         }
         @Override public void onPartialResults(Bundle partialResults) {}
         @Override public void onEvent(int eventType, Bundle params) {}
+
+
+        class myBackgroundTask extends AsyncTask<String,Void,String>{
+            @Override
+            protected String doInBackground(String... str) {
+                String inputTest = str[0];
+                String clientId ="tVgKm0zaEMKwd8O2dLXR";
+                String clientSecret="fY4_JkE9lm";
+                String result ="";
+                try {
+                    String text = URLEncoder.encode(inputTest, "UTF-8");
+                    String apiURL = "https://openapi.naver.com/v1/papago/n2mt";
+                    URL url = new URL(apiURL);
+                    HttpURLConnection con = (HttpURLConnection)url.openConnection();
+                    con.setRequestMethod("POST");
+                    con.setRequestProperty("X-Naver-Client-Id", clientId);
+                    con.setRequestProperty("X-Naver-Client-Secret", clientSecret);
+                    // post request
+                    String postParams = "";
+                    if(mySpinner.getSelectedItem().toString().equals("English")) {
+                        postParams += "source=en&";
+                    } else if(mySpinner.getSelectedItem().toString().equals("한국어")) {
+                        postParams += "source=ko&";
+                    } else if(mySpinner.getSelectedItem().toString().equals("中国人")) {
+                        postParams += "source=zh-cn&";
+                    } else if(mySpinner.getSelectedItem().toString().equals("日本語")) {
+                        postParams += "source=ja&";
+                    }
+                    if(yourSpinner.getSelectedItem().toString().equals("English")) {
+                        postParams += "target=en&";
+                    } else if(yourSpinner.getSelectedItem().toString().equals("한국어")) {
+                        postParams += "target=ko&";
+                    } else if(yourSpinner.getSelectedItem().toString().equals("中国人")) {
+                        postParams += "target=zh-cn&";
+                    } else if(yourSpinner.getSelectedItem().toString().equals("日本語")) {
+                        postParams += "target=ja&";
+                    }
+                    postParams += "text=" + text;
+
+                    con.setDoOutput(true);
+                    DataOutputStream wr = new DataOutputStream(con.getOutputStream());
+                    wr.writeBytes(postParams);
+                    wr.flush();
+                    wr.close();
+                    //번역 결과 받아온다.
+                    int responseCode = con.getResponseCode();
+                    BufferedReader br;
+                    if(responseCode==200) { // 정상 호출
+                        br = new BufferedReader(new InputStreamReader(con.getInputStream()));
+                    } else {  // 에러 발생
+                        br = new BufferedReader(new InputStreamReader(con.getErrorStream()));
+                    }
+                    String inputLine;
+                    StringBuffer response = new StringBuffer();
+                    while ((inputLine = br.readLine()) != null) {
+                        response.append(inputLine);
+                    }
+                    br.close();
+                    result = response.toString();
+                } catch (Exception e) {
+                    result="Translation Failed";
+                    System.out.println(e);
+                }
+                Log.d("papago",result);
+                return result;
+            }
+
+            @Override
+            protected void onPostExecute(String s) {
+                super.onPostExecute(s);
+                JsonParser parser = new JsonParser();
+                JsonElement element = parser.parse(s);
+                String tmp = element.getAsJsonObject().get("message").getAsJsonObject().get("result").getAsJsonObject().get("translatedText").getAsString();
+                yourText.setText(tmp);
+            }
+        }
     };
 
-    class yourBackgroundTask extends AsyncTask<String,Void,String>{
-        @Override
-        protected String doInBackground(String... str) {
-            String inputTest = str[0];
-            String clientId ="tVgKm0zaEMKwd8O2dLXR";
-            String clientSecret="fY4_JkE9lm";
-            String result ="";
-            try {
-                String text = URLEncoder.encode(inputTest, "UTF-8");
-                String apiURL = "https://openapi.naver.com/v1/papago/n2mt";
-                URL url = new URL(apiURL);
-                HttpURLConnection con = (HttpURLConnection)url.openConnection();
-                con.setRequestMethod("POST");
-                con.setRequestProperty("X-Naver-Client-Id", clientId);
-                con.setRequestProperty("X-Naver-Client-Secret", clientSecret);
-                // post request
-                String postParams = "";
-                if(yourSpinner.getSelectedItem().toString().equals("English")) {
-                    postParams += "source=en-US&";
-                } else if(yourSpinner.getSelectedItem().toString().equals("한국어")) {
-                    postParams += "source=ko&";
-                } else if(yourSpinner.getSelectedItem().toString().equals("中国人")) {
-                    postParams += "source=zh-CN&";
-                } else if(yourSpinner.getSelectedItem().toString().equals("日本語")) {
-                    postParams += "source=ja&";
-                }
-                if(mySpinner.getSelectedItem().toString().equals("English")) {
-                    postParams += "target=en-US&";
-                } else if(mySpinner.getSelectedItem().toString().equals("한국어")) {
-                    postParams += "target=ko&";
-                } else if(mySpinner.getSelectedItem().toString().equals("中国人")) {
-                    postParams += "target=zh-CN&";
-                } else if(mySpinner.getSelectedItem().toString().equals("日本語")) {
-                    postParams += "target=ja&";
-                }
-                postParams += "text=" + text;
-
-                con.setDoOutput(true);
-                DataOutputStream wr = new DataOutputStream(con.getOutputStream());
-                wr.writeBytes(postParams);
-                wr.flush();
-                wr.close();
-                //번역 결과 받아온다.
-                int responseCode = con.getResponseCode();
-                BufferedReader br;
-                if(responseCode==200) { // 정상 호출
-                    br = new BufferedReader(new InputStreamReader(con.getInputStream()));
-                } else {  // 에러 발생
-                    br = new BufferedReader(new InputStreamReader(con.getErrorStream()));
-                }
-                String inputLine;
-                StringBuffer response = new StringBuffer();
-                while ((inputLine = br.readLine()) != null) {
-                    response.append(inputLine);
-                }
-                br.close();
-                result = response.toString();
-            } catch (Exception e) {
-                result="번역 실패";
-                System.out.println(e);
-            }
-            Log.d("papago",result);
-            return result;
-        }
-
-        @Override
-        protected void onPostExecute(String s) {
-            super.onPostExecute(s);
-            JsonParser parser = new JsonParser();
-            JsonElement element = parser.parse(s);
-            String tmp = element.getAsJsonObject().get("message").getAsJsonObject().get("result").getAsJsonObject().get("translatedText").getAsString();
-            myText.setText(tmp);
-        }
-    }
-
-    class myBackgroundTask extends AsyncTask<String,Void,String>{
-        @Override
-        protected String doInBackground(String... str) {
-            String inputTest = str[0];
-            String clientId ="tVgKm0zaEMKwd8O2dLXR";
-            String clientSecret="fY4_JkE9lm";
-            String result ="";
-            try {
-                String text = URLEncoder.encode(inputTest, "UTF-8");
-                String apiURL = "https://openapi.naver.com/v1/papago/n2mt";
-                URL url = new URL(apiURL);
-                HttpURLConnection con = (HttpURLConnection)url.openConnection();
-                con.setRequestMethod("POST");
-                con.setRequestProperty("X-Naver-Client-Id", clientId);
-                con.setRequestProperty("X-Naver-Client-Secret", clientSecret);
-                // post request
-                String postParams = "";
-                if(mySpinner.getSelectedItem().toString().equals("English")) {
-                    postParams += "source=en-US&";
-                } else if(mySpinner.getSelectedItem().toString().equals("한국어")) {
-                    postParams += "source=ko&";
-                } else if(mySpinner.getSelectedItem().toString().equals("中国人")) {
-                    postParams += "source=zh-CN&";
-                } else if(mySpinner.getSelectedItem().toString().equals("日本語")) {
-                    postParams += "source=ja&";
-                }
-                if(yourSpinner.getSelectedItem().toString().equals("English")) {
-                    postParams += "target=en-US&";
-                } else if(yourSpinner.getSelectedItem().toString().equals("한국어")) {
-                    postParams += "target=ko&";
-                } else if(yourSpinner.getSelectedItem().toString().equals("中国人")) {
-                    postParams += "target=zh-CN&";
-                } else if(yourSpinner.getSelectedItem().toString().equals("日本語")) {
-                    postParams += "target=ja&";
-                }
-                postParams += "text=" + text;
-
-                con.setDoOutput(true);
-                DataOutputStream wr = new DataOutputStream(con.getOutputStream());
-                wr.writeBytes(postParams);
-                wr.flush();
-                wr.close();
-                //번역 결과 받아온다.
-                int responseCode = con.getResponseCode();
-                BufferedReader br;
-                if(responseCode==200) { // 정상 호출
-                    br = new BufferedReader(new InputStreamReader(con.getInputStream()));
-                } else {  // 에러 발생
-                    br = new BufferedReader(new InputStreamReader(con.getErrorStream()));
-                }
-                String inputLine;
-                StringBuffer response = new StringBuffer();
-                while ((inputLine = br.readLine()) != null) {
-                    response.append(inputLine);
-                }
-                br.close();
-                result = response.toString();
-            } catch (Exception e) {
-                result="Translation Failed";
-                System.out.println(e);
-            }
-            Log.d("papago",result);
-            return result;
-        }
-
-        @Override
-        protected void onPostExecute(String s) {
-            super.onPostExecute(s);
-            JsonParser parser = new JsonParser();
-            JsonElement element = parser.parse(s);
-            String tmp = element.getAsJsonObject().get("message").getAsJsonObject().get("result").getAsJsonObject().get("translatedText").getAsString();
-            yourText.setText(tmp);
-        }
-    }
 
     @Override
     protected void onResume() {
@@ -629,5 +707,25 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     protected void onPause(){
         super.onPause();
     }
+
+    /*@Override
+    public void onBackPressed() {
+        if ( pressedTime == 0 ) {
+            Toast.makeText(HomeActivity.this, " 한 번 더 누르면 종료됩니다." , Toast.LENGTH_LONG).show();
+            pressedTime = Integer.parseInt(String.valueOf(System.currentTimeMillis()));
+        }
+        else {
+            int seconds = (int) (System.currentTimeMillis() - pressedTime);
+
+            if ( seconds > 2000 ) {
+                Toast.makeText(HomeActivity.this, " 한 번 더 누르면 종료됩니다." , Toast.LENGTH_LONG).show();
+                pressedTime = 0 ;
+            }
+            else {
+                super.onBackPressed();
+                finish(); // app 종료 시키기
+            }
+        }
+    }*/
 }
 

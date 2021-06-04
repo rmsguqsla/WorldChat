@@ -30,7 +30,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         btnSign = (Button)findViewById(R.id.btnSignup);
         btnLogin.setOnClickListener(this);
         btnSign.setOnClickListener(this);
-        init();
     }
 
     @Override
@@ -45,15 +44,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    private void init() {
-        FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (firebaseUser != null) {
-            myStartActivity(HomeActivity.class);
-        }
-    }
-
     private void myStartActivity(Class c) {
         Intent intent = new Intent(this, c);
-        startActivityForResult(intent, 1);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        startActivity(intent);
     }
 }

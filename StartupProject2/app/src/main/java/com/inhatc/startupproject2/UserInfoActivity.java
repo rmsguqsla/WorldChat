@@ -35,7 +35,7 @@ public class UserInfoActivity extends AppCompatActivity implements View.OnClickL
     EditText etName;
     Button btnSet;
     Spinner spinLan;
-    String[] language = {"English", "한국어", "中国人", "日本語"};
+    String[] language = {"한국어", "English", "中国人", "日本語"};
     FirebaseUser user;
 
     @Override

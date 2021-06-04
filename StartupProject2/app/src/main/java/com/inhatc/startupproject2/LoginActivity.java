@@ -7,6 +7,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.view.View;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -26,7 +27,7 @@ public class LoginActivity extends AppCompatActivity {
         mAuth = FirebaseAuth.getInstance();
 
         findViewById(R.id.btnLogin).setOnClickListener(onClickListener);
-        //findViewById(R.id.gotoPasswordResetButton).setOnClickListener(onClickListener);
+        findViewById(R.id.findpw).setOnClickListener(onClickListener);
     }
 
     View.OnClickListener onClickListener = new View.OnClickListener() {
@@ -36,9 +37,9 @@ public class LoginActivity extends AppCompatActivity {
                 case R.id.btnLogin:
                     login();
                     break;
-                //case R.id.gotoPasswordResetButton:
-                //    myStartActivity(PasswordResetActivity.class);
-                //    break;
+                case R.id.findpw:
+                    myStartActivity(PasswordResetActivity.class);
+                    break;
             }
         }
     };

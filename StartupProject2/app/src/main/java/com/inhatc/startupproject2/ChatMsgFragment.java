@@ -47,7 +47,7 @@ public class ChatMsgFragment extends Fragment implements View.OnClickListener {
     ChatAdapter mAdapter;
 
     // 유저 이름
-    String userName = "";
+    String userName;
 
     // 채팅 내용을 담을 배열
     List<ChatMsgVo> msgList = new ArrayList<>();
@@ -57,6 +57,9 @@ public class ChatMsgFragment extends Fragment implements View.OnClickListener {
     DatabaseReference myRef;
 
     String chatRoomName;
+
+    //유저 언어
+    String language;
 
     public ChatMsgFragment() {
     }
@@ -71,6 +74,26 @@ public class ChatMsgFragment extends Fragment implements View.OnClickListener {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        DocumentReference documentReference = FirebaseFirestore.getInstance().collection("users").document(user.getUid());
+        documentReference.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                if (task.isSuccessful()) {
+                    DocumentSnapshot document = task.getResult();
+                    if (document != null) {
+                        if (document.exists()) {
+                            userName = document.getData().get("name").toString();
+                            language = document.getData().get("language").toString();
+                        } else {
+                            Log.d("TAG : ", "No such document");
+                        }
+                    }
+                } else {
+                    Log.d("TAG : ", "get failed with ", task.getException());
+                }
+            }
+        });
     }
 
     @Override
@@ -144,28 +167,7 @@ public class ChatMsgFragment extends Fragment implements View.OnClickListener {
                     SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
                     // Database 에 저장할 객체 만들기
-
-                    /*FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-                    DocumentReference documentReference = FirebaseFirestore.getInstance().collection("users").document(user.getUid());
-                    documentReference.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-                        @Override
-                        public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                            if (task.isSuccessful()) {
-                                DocumentSnapshot document = task.getResult();
-                                if (document != null) {
-                                    if (document.exists()) {
-                                        userName = document.getData().get("name").toString();
-                                    } else {
-                                        Log.d("TAG : ", "No such document");
-                                    }
-                                }
-                            } else {
-                                Log.d("TAG : ", "get failed with ", task.getException());
-                            }
-                        }
-                    });*/
-
-                    ChatMsgVo msgVO = new ChatMsgVo("Oh geun hyeop", df.format(new Date()).toString(), content_et.getText().toString().trim());
+                    ChatMsgVo msgVO = new ChatMsgVo(userName, df.format(new Date()).toString(), content_et.getText().toString().trim(), language);
 
 // 해당 DB 에 값 저장시키기
                     myRef.child("ChatRooms").child(chatRoomName).push().setValue(msgVO);

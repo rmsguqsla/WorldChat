@@ -1,96 +1,81 @@
 package com.inhatc.startupproject2;
 
+import android.util.Log;
+
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
-import java.util.HashMap;
-import java.util.Map;
 
-
-// 네이버 기계번역 (Papago SMT) API 예제
 public class Papago {
+    public String getTranslation(String word, String source, String target) {
 
-    public static void main(String[] args) {
-        String clientId = "tVgKm0zaEMKwd8O2dLXR";//애플리케이션 클라이언트 아이디값";
-        String clientSecret = "fY4_JkE9lm";//애플리케이션 클라이언트 시크릿값";
+        String clientId ="tVgKm0zaEMKwd8O2dLXR";
+        String clientSecret="fY4_JkE9lm";
+        String realsource = "";
+        String realtarget = "";
 
-        String apiURL = "https://openapi.naver.com/v1/papago/n2mt";
-        String text;
-        try {
-            text = URLEncoder.encode("안녕하세요. 오늘 기분은 어떻습니까?", "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException("인코딩 실패", e);
+        if(source.equals("한국어")){
+            realsource = "ko";
+        }else if(source.equals("English")){
+            realsource = "en";
+        }else if(source.equals("中国人")){
+            realsource = "zh-cn";
+        }else if(source.equals("日本語")){
+            realsource = "ja";
+        }
+        if(target.equals("한국어")){
+            realtarget = "ko";
+        }else if(target.equals("English")){
+            realtarget = "en";
+        }else if(target.equals("中国人")){
+            realtarget = "zh-cn";
+        }else if(target.equals("日本語")){
+            realtarget = "ja";
         }
 
-        Map<String, String> requestHeaders = new HashMap<>();
-        requestHeaders.put("X-Naver-Client-Id", clientId);
-        requestHeaders.put("X-Naver-Client-Secret", clientSecret);
+        Log.d("tag : ", word + " " +realsource + " " + realtarget);
 
-        String responseBody = post(apiURL, requestHeaders, text);
-
-        System.out.println(responseBody);
-    }
-
-    private static String post(String apiUrl, Map<String, String> requestHeaders, String text){
-        HttpURLConnection con = connect(apiUrl);
-        String postParams = "source=ko&target=en&text=" + text; //원본언어: 한국어 (ko) -> 목적언어: 영어 (en)
         try {
+            String wordSource, wordTarget;
+            String text = URLEncoder.encode(word, "UTF-8");
+            wordSource = URLEncoder.encode(realsource, "UTF-8");
+            wordTarget = URLEncoder.encode(realtarget, "UTF-8");
+
+            String apiURL = "https://openapi.naver.com/v1/papago/n2mt";
+            URL url = new URL(apiURL);
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
             con.setRequestMethod("POST");
-            for(Map.Entry<String, String> header :requestHeaders.entrySet()) {
-                con.setRequestProperty(header.getKey(), header.getValue());
-            }
-
+            con.setRequestProperty("X-Naver-Client-Id", clientId);
+            con.setRequestProperty("X-Naver-Client-Secret", clientSecret);
+            // post request
+            String postParams = "source="+wordSource+"&target="+wordTarget+"&text=" + text;
             con.setDoOutput(true);
-            try (DataOutputStream wr = new DataOutputStream(con.getOutputStream())) {
-                wr.write(postParams.getBytes());
-                wr.flush();
-            }
-
+            DataOutputStream wr = new DataOutputStream(con.getOutputStream());
+            wr.writeBytes(postParams);
+            wr.flush();
+            wr.close();
             int responseCode = con.getResponseCode();
-            if (responseCode == HttpURLConnection.HTTP_OK) { // 정상 응답
-                return readBody(con.getInputStream());
-            } else {  // 에러 응답
-                return readBody(con.getErrorStream());
+            BufferedReader br;
+            if (responseCode == 200) { // 정상 호출
+                br = new BufferedReader(new InputStreamReader(con.getInputStream()));
+            } else {  // 에러 발생
+                br = new BufferedReader(new InputStreamReader(con.getErrorStream()));
             }
-        } catch (IOException e) {
-            throw new RuntimeException("API 요청과 응답 실패", e);
-        } finally {
-            con.disconnect();
-        }
-    }
-
-    private static HttpURLConnection connect(String apiUrl){
-        try {
-            URL url = new URL(apiUrl);
-            return (HttpURLConnection)url.openConnection();
-        } catch (MalformedURLException e) {
-            throw new RuntimeException("API URL이 잘못되었습니다. : " + apiUrl, e);
-        } catch (IOException e) {
-            throw new RuntimeException("연결이 실패했습니다. : " + apiUrl, e);
-        }
-    }
-
-    private static String readBody(InputStream body){
-        InputStreamReader streamReader = new InputStreamReader(body);
-
-        try (BufferedReader lineReader = new BufferedReader(streamReader)) {
-            StringBuilder responseBody = new StringBuilder();
-
-            String line;
-            while ((line = lineReader.readLine()) != null) {
-                responseBody.append(line);
+            String inputLine;
+            StringBuffer response = new StringBuffer();
+            while ((inputLine = br.readLine()) != null) {
+                response.append(inputLine);
             }
-
-            return responseBody.toString();
-        } catch (IOException e) {
-            throw new RuntimeException("API 응답을 읽는데 실패했습니다.", e);
+            br.close();
+            String s = response.toString();
+            s = s.split("\"")[27];
+            return s;
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+        return "번역 실패";
     }
 }

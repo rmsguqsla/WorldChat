@@ -45,6 +45,7 @@ import com.google.gson.JsonParser;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -57,7 +58,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     SpeechRecognizer mRecognizer;
     TabHost myTabHost = null;
     TabHost.TabSpec myTabSpec;
-    TextView yourText;
+    TextView txtTitleUser, txtTitleChat, txtFriend, yourText;
     TextView myText;
     Spinner mySpinner;
     Spinner yourSpinner;
@@ -89,6 +90,9 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                             Manifest.permission.RECORD_AUDIO}, PERMISSION);
         }
 
+        txtFriend = findViewById(R.id.txtFriend);
+        txtTitleChat = findViewById(R.id.txtTitleChat);
+        txtTitleUser = findViewById(R.id.txtTitleUser);
         txtName = findViewById(R.id.txtName);
         btnLogout = (Button)findViewById(R.id.btnLogout);
         btnUserInfo = findViewById(R.id.btnUserInfo);
@@ -100,22 +104,24 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         lstChat = findViewById(R.id.lstChat);
 
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        DocumentReference documentReference = FirebaseFirestore.getInstance().collection("users").document(user.getUid());
-        documentReference.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-            @Override
-            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                if (task.isSuccessful()) {
-                    DocumentSnapshot document = task.getResult();
-                    if (document.exists()) {
-                        txtName.setText(document.getData().get("name").toString());
+        if(user != null) {
+            DocumentReference documentReference = FirebaseFirestore.getInstance().collection("users").document(user.getUid());
+            documentReference.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                @Override
+                public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                    if (task.isSuccessful()) {
+                        DocumentSnapshot document = task.getResult();
+                        if (document.exists()) {
+                            txtName.setText(document.getData().get("name").toString());
+                        } else {
+                            Log.d("TAG : ", "No such document");
+                        }
                     } else {
-                        Log.d("TAG : ", "No such document");
+                        Log.d("TAG : ", "get failed with ", task.getException());
                     }
-                } else {
-                    Log.d("TAG : ", "get failed with ", task.getException());
                 }
-            }
-        });
+            });
+        }
 
         CollectionReference collectionReference = FirebaseFirestore.getInstance().collection("users");
         collectionReference.get()
@@ -199,32 +205,13 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         myTabHost = (TabHost)findViewById(R.id.tabhost);
         myTabHost.setup();
 
-        myTabSpec = myTabHost.newTabSpec("친구")
-                .setIndicator("친구")
-                .setContent(R.id.tab1);
-        myTabHost.addTab(myTabSpec);
-
-        myTabSpec = myTabHost.newTabSpec("채팅")
-                .setIndicator("채팅")
-                .setContent(R.id.tab2);
-        myTabHost.addTab(myTabSpec);
-
-        myTabSpec = myTabHost.newTabSpec("번역기")
-                .setIndicator("번역기")
-                .setContent(R.id.tab3);
-        myTabHost.addTab(myTabSpec);
-
-        myTabSpec = myTabHost.newTabSpec("설정")
-                .setIndicator("설정")
-                .setContent(R.id.tab4);
-        myTabHost.addTab(myTabSpec);
-
         myTabHost.setCurrentTab(0);
 
         myTabHost.setOnTabChangedListener(new TabHost.OnTabChangeListener() {
             @Override
             public void onTabChanged(String s) {
-                if(s.equalsIgnoreCase("친구")){
+                if(s.equalsIgnoreCase("친구") || s.equalsIgnoreCase("Friend") ||
+                        s.equalsIgnoreCase("朋友") || s.equalsIgnoreCase("友")){
                     collectionReference.get()
                             .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
                                 @Override
@@ -243,7 +230,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                                     }
                                 }
                             });
-                } else if(s.equalsIgnoreCase("채팅")){
+                } else if(s.equalsIgnoreCase("채팅") || s.equalsIgnoreCase("Chatting") ||
+                        s.equalsIgnoreCase("聊天") || s.equalsIgnoreCase("チャット")){
                     databaseReference.child("ChatRooms").get().addOnCompleteListener(new OnCompleteListener<DataSnapshot>() {
                         @Override
                         public void onComplete(@NonNull Task<DataSnapshot> task) {
@@ -319,6 +307,102 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                         if (document != null) {
                             if (document.exists()) {
                                 Log.d("TAG : ", "DocumentSnapshot data: " + document.getData());
+                                if(document.getData().get("language").toString().equals("English")){
+                                    txtTitleUser.setText("Friend");
+                                    txtTitleChat.setText("Chatting");
+                                    txtFriend.setText("Friend");
+                                    btnUserInfo.setText("My Info");
+                                    btnLogout.setText("Logout");
+                                    myTabSpec = myTabHost.newTabSpec("Friend")
+                                            .setIndicator("Friend")
+                                            .setContent(R.id.tab1);
+                                    myTabHost.addTab(myTabSpec);
+
+                                    myTabSpec = myTabHost.newTabSpec("Chatting")
+                                            .setIndicator("Chatting")
+                                            .setContent(R.id.tab2);
+                                    myTabHost.addTab(myTabSpec);
+
+                                    myTabSpec = myTabHost.newTabSpec("Translator")
+                                            .setIndicator("Translator")
+                                            .setContent(R.id.tab3);
+                                    myTabHost.addTab(myTabSpec);
+
+                                    myTabSpec = myTabHost.newTabSpec("Setting")
+                                            .setIndicator("Setting")
+                                            .setContent(R.id.tab4);
+                                    myTabHost.addTab(myTabSpec);
+                                }else if(document.getData().get("language").toString().equals("한국어")){
+                                    myTabSpec = myTabHost.newTabSpec("친구")
+                                            .setIndicator("친구")
+                                            .setContent(R.id.tab1);
+                                    myTabHost.addTab(myTabSpec);
+
+                                    myTabSpec = myTabHost.newTabSpec("채팅")
+                                            .setIndicator("채팅")
+                                            .setContent(R.id.tab2);
+                                    myTabHost.addTab(myTabSpec);
+
+                                    myTabSpec = myTabHost.newTabSpec("번역기")
+                                            .setIndicator("번역기")
+                                            .setContent(R.id.tab3);
+                                    myTabHost.addTab(myTabSpec);
+
+                                    myTabSpec = myTabHost.newTabSpec("설정")
+                                            .setIndicator("설정")
+                                            .setContent(R.id.tab4);
+                                    myTabHost.addTab(myTabSpec);
+                                } else if(document.getData().get("language").toString().equals("中国人")){
+                                    txtTitleUser.setText("朋友");
+                                    txtTitleChat.setText("聊天");
+                                    txtFriend.setText("朋友");
+                                    btnUserInfo.setText("我的信息");
+                                    btnLogout.setText("注销");
+                                    myTabSpec = myTabHost.newTabSpec("朋友")
+                                            .setIndicator("朋友")
+                                            .setContent(R.id.tab1);
+                                    myTabHost.addTab(myTabSpec);
+
+                                    myTabSpec = myTabHost.newTabSpec("聊天")
+                                            .setIndicator("聊天")
+                                            .setContent(R.id.tab2);
+                                    myTabHost.addTab(myTabSpec);
+
+                                    myTabSpec = myTabHost.newTabSpec("翻译器")
+                                            .setIndicator("翻译器")
+                                            .setContent(R.id.tab3);
+                                    myTabHost.addTab(myTabSpec);
+
+                                    myTabSpec = myTabHost.newTabSpec("设置")
+                                            .setIndicator("设置")
+                                            .setContent(R.id.tab4);
+                                    myTabHost.addTab(myTabSpec);
+                                } else if(document.getData().get("language").toString().equals("日本語")){
+                                    txtTitleUser.setText("友");
+                                    txtTitleChat.setText("チャット");
+                                    txtFriend.setText("友");
+                                    btnUserInfo.setText("私の情報");
+                                    btnLogout.setText("ログアウト");
+                                    myTabSpec = myTabHost.newTabSpec("友")
+                                            .setIndicator("友")
+                                            .setContent(R.id.tab1);
+                                    myTabHost.addTab(myTabSpec);
+
+                                    myTabSpec = myTabHost.newTabSpec("チャット")
+                                            .setIndicator("チャット")
+                                            .setContent(R.id.tab2);
+                                    myTabHost.addTab(myTabSpec);
+
+                                    myTabSpec = myTabHost.newTabSpec("翻訳機")
+                                            .setIndicator("翻訳機")
+                                            .setContent(R.id.tab3);
+                                    myTabHost.addTab(myTabSpec);
+
+                                    myTabSpec = myTabHost.newTabSpec("設定")
+                                            .setIndicator("設定")
+                                            .setContent(R.id.tab4);
+                                    myTabHost.addTab(myTabSpec);
+                                }
                             } else {
                                 Log.d("TAG : ", "No such document");
                                 myStartActivity(UserInfoActivity.class);
@@ -427,7 +511,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
 
     private RecognitionListener yourlistener = new RecognitionListener() {
         @Override public void onReadyForSpeech(Bundle params) {
-            Toast.makeText(HomeActivity.this, "말하세요", Toast.LENGTH_SHORT).show();
+            Toast.makeText(HomeActivity.this, "Speak", Toast.LENGTH_SHORT).show();
         }
         @Override public void onBeginningOfSpeech() {}
         @Override public void onRmsChanged(float rmsdB) {}
@@ -437,46 +521,47 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             String message;
             switch (error) {
                 case SpeechRecognizer.ERROR_AUDIO:
-                    message = "오디오 에러";
+                    message = "audio error";
                     break;
                 case SpeechRecognizer.ERROR_CLIENT:
-                    message = "클라이언트 에러";
+                    message = "client error";
                     break;
                 case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS:
-                    message = "퍼미션 없음";
+                    message = "no permission";
                     break;
                 case SpeechRecognizer.ERROR_NETWORK:
-                    message = "네트워크 에러";
+                    message = "network error";
                     break;
                 case SpeechRecognizer.ERROR_NETWORK_TIMEOUT:
-                    message = "네트웍 타임아웃";
+                    message = "network timeout";
                     break;
                 case SpeechRecognizer.ERROR_NO_MATCH:
-                    message = "찾을 수 없음";
+                    message = "not found";
                     break;
                 case SpeechRecognizer.ERROR_RECOGNIZER_BUSY:
-                    message = "RECOGNIZER가 바쁨";
+                    message = "recognizer is busy";
                     break;
                 case SpeechRecognizer.ERROR_SERVER:
-                    message = "서버가 이상함";
+                    message = "server is weird";
                     break;
                 case SpeechRecognizer.ERROR_SPEECH_TIMEOUT:
-                    message = "말하는 시간초과";
+                    message = "speaking timeout";
                     break;
-                default: message = "알 수 없는 오류임";
+                default: message = "unknown error";
                     break;
             }
             Toast.makeText(getApplicationContext(),
-                    "에러가 발생하였습니다. : " +
+                    "An error has occurred : " +
                             message + error,Toast.LENGTH_SHORT).show();
         }
 
         @Override public void onResults(Bundle results) {
-            ArrayList<String> matches =
-                    results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+            ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+
             for(int i = 0; i < matches.size() ; i++){
                 yourText.setText(matches.get(i));
             }
+
             yourBackgroundTask task = new yourBackgroundTask();
             tmp = yourText.getText().toString();
             task.execute(tmp);
@@ -502,7 +587,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                     // post request
                     String postParams = "";
                     if(yourSpinner.getSelectedItem().toString().equals("English")) {
-                        postParams += "source=en-US&";
+                        postParams += "source=en&";
                     } else if(yourSpinner.getSelectedItem().toString().equals("한국어")) {
                         postParams += "source=ko&";
                     } else if(yourSpinner.getSelectedItem().toString().equals("中国人")) {
@@ -511,7 +596,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                         postParams += "source=ja&";
                     }
                     if(mySpinner.getSelectedItem().toString().equals("English")) {
-                        postParams += "target=en-US&";
+                        postParams += "target=en&";
                     } else if(mySpinner.getSelectedItem().toString().equals("한국어")) {
                         postParams += "target=ko&";
                     } else if(mySpinner.getSelectedItem().toString().equals("中国人")) {
@@ -572,37 +657,37 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             String message;
             switch (error) {
                 case SpeechRecognizer.ERROR_AUDIO:
-                    message = "오디오 에러";
+                    message = "audio error";
                     break;
                 case SpeechRecognizer.ERROR_CLIENT:
-                    message = "클라이언트 에러";
+                    message = "client error";
                     break;
                 case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS:
-                    message = "퍼미션 없음";
+                    message = "no permission";
                     break;
                 case SpeechRecognizer.ERROR_NETWORK:
-                    message = "네트워크 에러";
+                    message = "network error";
                     break;
                 case SpeechRecognizer.ERROR_NETWORK_TIMEOUT:
-                    message = "네트웍 타임아웃";
+                    message = "network timeout";
                     break;
                 case SpeechRecognizer.ERROR_NO_MATCH:
-                    message = "찾을 수 없음";
+                    message = "not found";
                     break;
                 case SpeechRecognizer.ERROR_RECOGNIZER_BUSY:
-                    message = "RECOGNIZER가 바쁨";
+                    message = "recognizer is busy";
                     break;
                 case SpeechRecognizer.ERROR_SERVER:
-                    message = "서버가 이상함";
+                    message = "server is weird";
                     break;
                 case SpeechRecognizer.ERROR_SPEECH_TIMEOUT:
-                    message = "말하는 시간초과";
+                    message = "speaking timeout";
                     break;
-                default: message = "알 수 없는 오류임";
+                default: message = "unknown error";
                     break;
             }
             Toast.makeText(getApplicationContext(),
-                    "에러가 발생하였습니다. : " +
+                    "An error has occurred : " +
                             message + error,Toast.LENGTH_SHORT).show();
         }
 
@@ -708,14 +793,14 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         super.onPause();
     }
 
-    /*@Override
+    @Override
     public void onBackPressed() {
         if ( pressedTime == 0 ) {
             Toast.makeText(HomeActivity.this, " 한 번 더 누르면 종료됩니다." , Toast.LENGTH_LONG).show();
-            pressedTime = Integer.parseInt(String.valueOf(System.currentTimeMillis()));
+            //pressedTime = Integer.parseInt(String.valueOf(System.currentTimeMillis()));
         }
         else {
-            int seconds = (int) (System.currentTimeMillis() - pressedTime);
+            int seconds = (Integer.parseInt(String.valueOf(System.currentTimeMillis())) - pressedTime);
 
             if ( seconds > 2000 ) {
                 Toast.makeText(HomeActivity.this, " 한 번 더 누르면 종료됩니다." , Toast.LENGTH_LONG).show();
@@ -726,6 +811,6 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                 finish(); // app 종료 시키기
             }
         }
-    }*/
+    }
 }
 

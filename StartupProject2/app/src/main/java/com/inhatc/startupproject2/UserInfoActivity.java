@@ -14,12 +14,16 @@ import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.Toast;
 
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
@@ -53,6 +57,32 @@ public class UserInfoActivity extends AppCompatActivity implements View.OnClickL
         spinLan.setAdapter(adapter);
 
         btnSet.setOnClickListener(this);
+
+        if(databaseReference != null) {
+            databaseReference.child("Users").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child("userName").get()
+                    .addOnCompleteListener(new OnCompleteListener<DataSnapshot>() {
+                        @Override
+                        public void onComplete(@NonNull Task<DataSnapshot> task) {
+                            etName.setText(task.getResult().getValue().toString());
+                        }
+                    });
+            databaseReference.child("Users").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child("userLanguage").get()
+                    .addOnCompleteListener(new OnCompleteListener<DataSnapshot>() {
+                        @Override
+                        public void onComplete(@NonNull Task<DataSnapshot> task) {
+                            if(task.getResult().getValue().toString().equals("한국어")){
+                                spinLan.setSelection(0);
+                            } else if(task.getResult().getValue().toString().equals("English")){
+                                spinLan.setSelection(1);
+                            } else if(task.getResult().getValue().toString().equals("中国人")){
+                                spinLan.setSelection(2);
+                            } else if(task.getResult().getValue().toString().equals("日本語")){
+                                spinLan.setSelection(1);
+                            }
+                        }
+                    });
+        }
+
     }
     @Override
     public void onClick(View v){

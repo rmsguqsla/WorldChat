@@ -13,6 +13,9 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException;
+import com.google.firebase.auth.FirebaseAuthUserCollisionException;
+import com.google.firebase.auth.FirebaseAuthWeakPasswordException;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
@@ -32,6 +35,7 @@ public class SignupActivity extends AppCompatActivity {
         findViewById(R.id.btnSignup).setOnClickListener(onClickListener);
     }
 
+    /*
     @Override
     public void onBackPressed() {
         super.onBackPressed();
@@ -39,6 +43,7 @@ public class SignupActivity extends AppCompatActivity {
         android.os.Process.killProcess(android.os.Process.myPid());
         System.exit(1);
     }
+    */
 
     View.OnClickListener onClickListener = new View.OnClickListener() {
         @Override
@@ -69,8 +74,16 @@ public class SignupActivity extends AppCompatActivity {
                                     mAuth.signOut();
                                     myStartActivity(MainActivity.class);
                                 } else {
-                                    if(task.getException() != null){
-                                        Toast.makeText(SignupActivity.this, task.getException().toString(),Toast.LENGTH_SHORT).show();
+                                    try {
+                                        throw task.getException();
+                                    } catch(FirebaseAuthWeakPasswordException e) {
+                                        Toast.makeText(SignupActivity.this,"Please enter a password of at least 6 digits" ,Toast.LENGTH_SHORT).show();
+                                    } catch(FirebaseAuthInvalidCredentialsException e) {
+                                        Toast.makeText(SignupActivity.this,"Please enter in email format" ,Toast.LENGTH_SHORT).show();
+                                    } catch(FirebaseAuthUserCollisionException e) {
+                                        Toast.makeText(SignupActivity.this,"This email already exists" ,Toast.LENGTH_SHORT).show();
+                                    } catch(Exception e) {
+                                        Toast.makeText(SignupActivity.this, "Please check again" ,Toast.LENGTH_SHORT).show();
                                     }
                                 }
                             }
@@ -79,7 +92,7 @@ public class SignupActivity extends AppCompatActivity {
                 Toast.makeText(SignupActivity.this, "passwords do not match.",Toast.LENGTH_SHORT).show();
             }
         }else {
-            Toast.makeText(SignupActivity.this, "Enter your email or password.",Toast.LENGTH_SHORT).show();
+            Toast.makeText(SignupActivity.this, "Please enter your email or password.",Toast.LENGTH_SHORT).show();
         }
     }
 

@@ -150,7 +150,7 @@
                             android:layout_marginTop="10dp"
                             android:background="@drawable/border"
                             android:textSize="18dp"
-                            android:text="누르고 말하세요."
+                            android:text="Press and speak"
                             android:gravity="center"
                             android:rotation="-180"/>
 
@@ -169,7 +169,7 @@
                             android:layout_marginBottom="10dp"
                             android:background="@drawable/border"
                             android:textSize="18dp"
-                            android:text="누르고 말하세요."
+                            android:text="Press and speak"
                             android:gravity="center"/>
 
                     </FrameLayout>
@@ -190,14 +190,14 @@
                         android:id="@+id/btnUserInfo"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="UserInfo"
+                        android:text="내 정보"
                         android:layout_gravity="center"
                         android:layout_marginTop="50dp"/>
                     <Button
                         android:id="@+id/btnLogout"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Logout"
+                        android:text="로그아웃"
                         android:layout_gravity="center"
                         android:layout_marginTop="30dp"/>
 
